@@ -11,6 +11,14 @@ Demo URL: http://31.97.188.5:8081
 - **Data resets.** A sandbox is deleted after 72 hours without use (or earlier if many visitors arrive), and Settings → Reset demo data restores the seed at any time.
 - **Plain HTTP.** The demo is served over HTTP on an IP address, without TLS. Don't enter anything you'd want to keep private.
 
+## What's inside
+
+- **Overview:** balance hero showing Ledger − Holds = Available, plus pending-in and a runway metric; cash-flow chart (7 days / 30 days / 13 weeks / 12 months) with money in/out and closing balance, plus a "view as table" toggle; spending by category.
+- **Transactions:** search, filters (direction, date, account, category, status), sorting by date and amount, URL-driven so any view is shareable, deep-linkable detail drawer, editable persisted notes.
+- **Accounts:** per-account balances, holds, pending-in and recent activity.
+- **Move money:** validated transfer between own accounts with a review step.
+- **Settings:** reset demo data and demo disclosure.
+
 ## Stack
 
 - [Next.js](https://nextjs.org) (App Router) with React and TypeScript (strict)
@@ -20,6 +28,15 @@ Demo URL: http://31.97.188.5:8081
 - Recharts for charts
 
 Money is stored as integer cents; balances, totals and chart series are derived by pure selectors in `src/domain/`. The API is documented in [docs/api.md](docs/api.md).
+
+## Product and engineering decisions
+
+- **Money model:** integer cents; balances derived from each account's opening balance and its transaction ledger, never stored, so summaries, charts and account cards cannot disagree. Internal transfers are excluded from income, spending and cash-flow totals, and the UI says so.
+- **Real backend, not a mock:** Route Handlers → services → repositories → SQLite, Zod validation on the server, and the transfer form reuses the same schema on the client.
+- **Transfers:** one database transaction (both sides post or neither), idempotency keys (a double-click or retry replays the same result), validation of positive amount, max 2 decimals, different active accounts, sufficient available funds.
+- **Per-visitor sandbox:** every reviewer gets a private copy of the data.
+- **Quality:** 271 automated tests (domain calculations, filtering, services, API handlers, transfer form validation); lint, typecheck and production build pass. Lighthouse scored Accessibility 100 and SEO 100 on Overview and Accounts (mobile and desktop).
+- **Scope:** Cards, Analytics, Payments, CSV export and a command palette were deliberately cut to finish the core flows to a high standard within the time limit.
 
 ## Local setup
 
@@ -101,7 +118,8 @@ In practice:
 ## Known limitations
 
 - **Simulated data only.** One fictional company, three accounts, seeded history. No real banking, payments or account numbers, and transfers only move money between the company's own demo accounts.
-- **Not built:** no Cards page and no dedicated Analytics page (charts live on the Overview). There's no authentication; the "signed-in" user is fictional.
+- **Not built:** no Cards, Analytics or Payments pages, no CSV export or command palette, and no authentication (the signed-in user is fictional). Charts live on the Overview.
+- **Mobile performance:** on the Overview, the figures appear after the page's JavaScript loads and fetches `/api/overview`. Lighthouse mobile Performance is about 50–60 under its slow-phone throttling (desktop is higher but varies, roughly 75–90 across runs). The planned fix is server-rendering the initial Overview data.
 - **HTTP only.** Served on an IP address without TLS, so there's no HSTS and the session cookie isn't `Secure`.
 - **In-memory rate limit.** The mutation rate limiter lives in process memory: it resets on restart and isn't shared between processes.
 - **Single instance.** One PM2 process with a local SQLite file; it isn't set up to scale horizontally.
