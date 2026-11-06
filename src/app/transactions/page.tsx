@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { PageHeader } from "@/components/page-header";
+import { TransactionsSkeleton, TransactionsView } from "@/components/transactions/transactions-view";
 
 export const metadata: Metadata = {
   title: "Transactions",
 };
 
 export default function TransactionsPage() {
-  return <PageHeader title="Transactions" description="Activity across all accounts." />;
+  return (
+    <Suspense fallback={<TransactionsSkeleton />}>
+      <TransactionsView />
+    </Suspense>
+  );
 }
