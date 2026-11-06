@@ -1,5 +1,11 @@
-import { PageHeader } from "@/components/page-header";
+import { Suspense } from "react";
+
+import { OverviewSkeleton, OverviewView } from "@/components/overview/overview-view";
 
 export default function OverviewPage() {
-  return <PageHeader title="Overview" description="Your company's accounts at a glance." />;
+  return (
+    <Suspense fallback={<OverviewSkeleton />}>
+      <OverviewView />
+    </Suspense>
+  );
 }
