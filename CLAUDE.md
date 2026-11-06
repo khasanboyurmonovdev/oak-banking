@@ -19,7 +19,15 @@ Read the docs relevant to the current phase. Don't re-read all of them every tim
 Next.js (App Router), React, TypeScript (strict), Tailwind CSS, shadcn/ui, Lucide, Recharts, Zod, Vitest, SQLite behind a repository layer. Package manager: npm. Fonts: Geist Sans (UI) and Geist Mono (references/IDs). The SQLite driver is chosen in the backend phase and must install on both Windows (dev) and Linux/Docker (prod).
 
 ## Commands
-(Update this section after scaffolding. Record only commands that actually exist and work.)
+- `npm install`: install dependencies
+- `npm run dev`: dev server (Turbopack) on http://localhost:3000
+- `npm run lint`: ESLint
+- `npm run typecheck`: `next typegen && tsc --noEmit` (typegen is required: `LayoutProps`/`PageProps` are generated globals)
+- `npm run build`: production build
+- `npm run start`: serve the production build
+- `npx shadcn@latest add <component>`: add a shadcn/ui component (radix base, style `radix-nova`)
+
+Local network note: this machine's Avast web shield intercepts HTTPS, and the user-level npm `cafile` does not trust it. If npm fails with `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, prefix commands with `npm_config_cafile="$NODE_EXTRA_CA_CERTS"` (Bash) rather than changing global config.
 
 ## Architecture rules
 - `src/domain/` is pure TypeScript: models, money utilities, seed generator, selectors, validation rules. It must not import React, Next.js or database code.
@@ -58,7 +66,7 @@ Next.js (App Router), React, TypeScript (strict), Tailwind CSS, shadcn/ui, Lucid
 - Update the Commands and Status sections of this file when they change.
 
 ## Status
-- [ ] Phase 1A: scaffold, tooling, tokens, app shell
+- [x] Phase 1A: scaffold, tooling, tokens, app shell
 - [ ] Phase 1B: domain layer (types, seed data, selectors, tests)
 - [ ] Phase 2: backend (SQLite, API, sessions) + skeleton deploy to VPS
 - [ ] Phase 3: Overview
