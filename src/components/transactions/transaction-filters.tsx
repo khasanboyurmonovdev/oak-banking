@@ -7,6 +7,7 @@ import { RANGE_KEYS, RANGE_LABELS, type RangeKey } from "@/domain/analytics";
 import { CATEGORIES, isCategoryId } from "@/domain/categories";
 import type { DirectionFilter, SortDirection, SortField, TransactionQuery } from "@/domain/transaction-query";
 import { TRANSACTION_STATUSES } from "@/domain/types";
+import { NativeSelect } from "@/components/native-select";
 import { SegmentedControl } from "@/components/segmented-control";
 import { STATUS_LABELS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -45,8 +46,8 @@ const SORT_OPTIONS: readonly { value: string; label: string; sort: { field: Sort
 const CATEGORY_OPTIONS: Option[] = CATEGORIES.map((category) => ({ value: category.id, label: category.label }));
 const STATUS_OPTIONS: Option[] = TRANSACTION_STATUSES.map((status) => ({ value: status, label: STATUS_LABELS[status] }));
 
-const selectClass =
-  "h-9 w-full rounded-md border border-input bg-surface px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const dateInputClass =
+  "h-9 rounded-md border border-border bg-surface px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 const normalizeSearch = (value: string) => value.trim().replace(/\s+/g, " ");
 
@@ -187,14 +188,14 @@ function DateFilter({ query, onChange }: { query: TransactionQuery; onChange: (q
         <label htmlFor={`${id}-range`} className="sr-only">
           Date range
         </label>
-        <select
+        <NativeSelect
           id={`${id}-range`}
           value={choice}
           onChange={(event) => {
             const value = event.target.value;
             choose(value === "custom" ? "custom" : (RANGE_KEYS.find((key) => key === value) ?? ""));
           }}
-          className={cn(selectClass, "w-auto min-w-36")}
+          className="min-w-36"
         >
           <option value="">Any date</option>
           {RANGE_KEYS.map((key) => (
@@ -203,7 +204,7 @@ function DateFilter({ query, onChange }: { query: TransactionQuery; onChange: (q
             </option>
           ))}
           <option value="custom">Custom dates…</option>
-        </select>
+        </NativeSelect>
       </div>
       {choice === "custom" ? (
         <>
@@ -217,7 +218,7 @@ function DateFilter({ query, onChange }: { query: TransactionQuery; onChange: (q
               value={query.from ?? ""}
               max={query.to}
               onChange={(event) => onChange({ ...query, range: undefined, from: event.target.value || undefined })}
-              className={cn(selectClass, "w-auto")}
+              className={dateInputClass}
             />
           </div>
           <div>
@@ -230,7 +231,7 @@ function DateFilter({ query, onChange }: { query: TransactionQuery; onChange: (q
               value={query.to ?? ""}
               min={query.from}
               onChange={(event) => onChange({ ...query, range: undefined, to: event.target.value || undefined })}
-              className={cn(selectClass, "w-auto")}
+              className={dateInputClass}
             />
           </div>
         </>
@@ -246,21 +247,20 @@ function SortSelect({ query, onChange }: { query: TransactionQuery; onChange: (q
       <label htmlFor={id} className="mb-2 block text-[13px] font-medium text-foreground">
         Sort by
       </label>
-      <select
+      <NativeSelect
         id={id}
         value={`${query.sort.field}-${query.sort.dir}`}
         onChange={(event) => {
           const option = SORT_OPTIONS.find((candidate) => candidate.value === event.target.value);
           if (option) onChange({ ...query, sort: option.sort });
         }}
-        className={selectClass}
       >
         {SORT_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </div>
   );
 }
