@@ -28,6 +28,22 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // The server layer (DB, repositories, services, HTTP helpers) never renders UI.
+    files: ["src/server/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["react", "react-dom"],
+          patterns: [
+            { group: ["react/*", "react-dom/*"], message: "src/server must not depend on React." },
+            { group: ["@/components/*"], message: "src/server must not import UI components." },
+          ],
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
