@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { cashFlowSeries, categorySpend, periodSummary, RANGE_KEYS, resolveRange, runwayEstimate, runwayMonths } from "./analytics";
+import {
+  cashFlowSeries,
+  categorySpend,
+  periodSummary,
+  RANGE_KEYS,
+  RANGE_LABELS,
+  resolveRange,
+  runwayEstimate,
+  runwayMonths,
+  topCategorySpend,
+  type CategorySpend,
+} from "./analytics";
 import { ledgerBalance } from "./balances";
 import { generateSeed } from "./seed";
 import { makeAccount, makeTransfer, makeTx } from "./test-fixtures";
@@ -71,6 +82,35 @@ describe("categorySpend", () => {
 
   it("returns an empty list when there is no spend", () => {
     expect(categorySpend([], "30d", NOW)).toEqual([]);
+  });
+});
+
+describe("topCategorySpend", () => {
+  const spend: CategorySpend[] = [
+    { category: "payroll", cents: 500, share: 0.5 },
+    { category: "rent", cents: 200, share: 0.2 },
+    { category: "software", cents: 150, share: 0.15 },
+    { category: "meals", cents: 100, share: 0.1 },
+    { category: "travel", cents: 50, share: 0.05 },
+  ];
+
+  it("keeps the largest categories and folds the rest into Other", () => {
+    const ranked = topCategorySpend(spend, 3);
+    expect(ranked.map((row) => row.category)).toEqual(["payroll", "rent", "software", "other"]);
+    expect(ranked[3]).toEqual({ category: "other", cents: 150, share: 0.15000000000000002 });
+    expect(ranked.reduce((sum, row) => sum + row.cents, 0)).toBe(1000);
+  });
+
+  it("adds no Other row when everything fits", () => {
+    expect(topCategorySpend(spend, 5)).toEqual(spend);
+    expect(topCategorySpend([], 6)).toEqual([]);
+  });
+});
+
+describe("RANGE_LABELS", () => {
+  it("labels 90d as 13 weeks, matching its 13 weekly buckets", () => {
+    expect(RANGE_LABELS["90d"]).toBe("13 weeks");
+    expect(resolveRange("90d", NOW).bucketCount).toBe(13);
   });
 });
 

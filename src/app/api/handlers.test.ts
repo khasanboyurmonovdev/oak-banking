@@ -1,6 +1,6 @@
 // Route handlers called directly with Request objects, against the in-memory
 // database configured in vitest.config.mts.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Transaction } from "@/domain";
 import type { ApiErrorBody } from "@/server/http/response";
 import type { Overview } from "@/server/services/overview";
@@ -76,6 +76,28 @@ describe("GET /api/transactions", () => {
     expect(data.items).toHaveLength(5);
     expect(data.items.every((tx) => tx.status === "pending")).toBe(true);
     expect((await listTransactions(get("/api/transactions?pageSize=500", header))).status).toBe(400);
+  });
+
+  it("totals the whole filtered set, excluding transfers, and agrees with the overview", async () => {
+    const { header } = sessionCookie();
+    const all = (await json<Data<TransactionPage>>(await listTransactions(get("/api/transactions?pageSize=1", header))))
+      .data;
+    expect(all.items).toHaveLength(1);
+    expect(all.totals.transferCount).toBeGreaterThan(0);
+
+    const completed30d = (
+      await json<Data<TransactionPage>>(
+        await listTransactions(get("/api/transactions?range=30d&status=completed&pageSize=1", header)),
+      )
+    ).data;
+    const overview = (await json<Data<Overview>>(await getOverview(get("/api/overview?range=30d", header)))).data;
+    expect(completed30d.totals.inCents).toBe(overview.period.inCents);
+    expect(completed30d.totals.outCents).toBe(overview.period.outCents);
+
+    const transfersOnly = (
+      await json<Data<TransactionPage>>(await listTransactions(get("/api/transactions?category=internal_transfer", header)))
+    ).data;
+    expect(transfersOnly.totals).toMatchObject({ inCents: 0, outCents: 0, transferCount: transfersOnly.total });
   });
 });
 
@@ -179,6 +201,8 @@ describe("POST /api/transfers", () => {
   });
 
   it("rate-limits mutations per session with 429 and Retry-After", async () => {
+    // Freeze the limiter's clock so slow reseeds can't refill a token mid-test.
+    vi.useFakeTimers({ toFake: ["performance"] });
     const { header } = sessionCookie();
     const statuses: number[] = [];
     for (let i = 0; i < 22; i++) {
@@ -190,6 +214,7 @@ describe("POST /api/transfers", () => {
     expect(statuses.slice(20)).toEqual([429, 429]);
     // Another session has its own bucket.
     expect((await resetDemo(send("POST", "/api/demo/reset", {}, sessionCookie().header))).status).toBe(200);
+    vi.useRealTimers();
   });
 });
 

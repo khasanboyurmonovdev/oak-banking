@@ -1,10 +1,24 @@
-import { queryTransactions, type Transaction, type TransactionQuery } from "@/domain";
+import {
+  filteredTotals,
+  queryTransactions,
+  type FilteredTotals,
+  type Transaction,
+  type TransactionQuery,
+} from "@/domain";
+import { now } from "../clock";
 import type { Database } from "../db";
 import { findTransaction, listTransactions, updateTransactionNote } from "../repositories/transactions";
 
-export type TransactionPage = { items: Transaction[]; total: number; page: number; pageSize: number };
+export type TransactionPage = {
+  items: Transaction[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** In/out across every match (not just this page), transfers and failed items excluded. */
+  totals: FilteredTotals;
+};
 
-/** Filters and sorts with the domain query, then slices one page (1-based). */
+/** Filters and sorts with the domain query, then slices one page (1-based) and totals the full match. */
 export function listTransactionPage(
   db: Database,
   sessionId: string,
@@ -12,9 +26,15 @@ export function listTransactionPage(
   page: number,
   pageSize: number,
 ): TransactionPage {
-  const matching = queryTransactions(listTransactions(db, sessionId), query);
+  const matching = queryTransactions(listTransactions(db, sessionId), query, now());
   const start = (page - 1) * pageSize;
-  return { items: matching.slice(start, start + pageSize), total: matching.length, page, pageSize };
+  return {
+    items: matching.slice(start, start + pageSize),
+    total: matching.length,
+    page,
+    pageSize,
+    totals: filteredTotals(matching),
+  };
 }
 
 export function getTransaction(db: Database, sessionId: string, id: string): Transaction | undefined {

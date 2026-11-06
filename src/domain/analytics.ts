@@ -21,6 +21,14 @@ import type { Account, Transaction } from "./types";
 export const RANGE_KEYS = ["7d", "30d", "90d", "12m"] as const;
 export type RangeKey = (typeof RANGE_KEYS)[number];
 
+/** User-facing names. "90d" is 13 whole weeks (see `resolveRange`), so it is labelled that way. */
+export const RANGE_LABELS: Record<RangeKey, string> = {
+  "7d": "7 days",
+  "30d": "30 days",
+  "90d": "13 weeks",
+  "12m": "12 months",
+};
+
 export type BucketUnit = "day" | "week" | "month";
 
 /** Half-open interval [start, end) split into `bucketCount` buckets of `unit`. */
@@ -180,6 +188,22 @@ export function categorySpend(transactions: readonly Transaction[], range: Range
   return [...totals]
     .map(([category, cents]) => ({ category, cents, share: cents / total }))
     .sort((a, b) => b.cents - a.cents || a.category.localeCompare(b.category));
+}
+
+export type RankedSpend = { category: CategoryId | "other"; cents: Cents; share: number };
+
+/**
+ * The `limit` largest categories, with the rest folded into one "other" row
+ * (only when there is a rest). Expects `categorySpend` output (sorted, largest
+ * first), so the rows still sum to the period's spend.
+ */
+export function topCategorySpend(spend: readonly CategorySpend[], limit: number): RankedSpend[] {
+  const top: RankedSpend[] = spend.slice(0, limit);
+  const rest = spend.slice(limit);
+  if (rest.length === 0) return top;
+  const cents = rest.reduce((sum, row) => sum + row.cents, 0);
+  const share = rest.reduce((sum, row) => sum + row.share, 0);
+  return [...top, { category: "other", cents, share }];
 }
 
 export const RUNWAY_TRAILING_MONTHS = 3;

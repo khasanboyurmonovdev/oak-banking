@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { makeTx } from "./test-fixtures";
+import { makeTransfer, makeTx } from "./test-fixtures";
 import {
   DEFAULT_TRANSACTION_QUERY,
+  filteredTotals,
   parseTransactionQuery,
   queryTransactions,
   toSearchParams,
@@ -56,11 +57,14 @@ const txs = [
   }),
 ];
 
+// Wednesday, a week after the last fixture.
+const NOW = new Date("2026-06-17T12:00:00.000Z");
+
 const query = (overrides: Partial<TransactionQuery>): TransactionQuery => ({
   ...DEFAULT_TRANSACTION_QUERY,
   ...overrides,
 });
-const ids = (overrides: Partial<TransactionQuery>) => queryTransactions(txs, query(overrides)).map((tx) => tx.id);
+const ids = (overrides: Partial<TransactionQuery>) => queryTransactions(txs, query(overrides), NOW).map((tx) => tx.id);
 
 describe("queryTransactions search", () => {
   it("matches case-insensitively across counterparty, description, reference and note", () => {
@@ -101,7 +105,19 @@ describe("queryTransactions filters", () => {
 
   it("returns an empty list when nothing matches", () => {
     expect(ids({ search: "no such vendor" })).toEqual([]);
-    expect(queryTransactions([], DEFAULT_TRANSACTION_QUERY)).toEqual([]);
+    expect(queryTransactions([], DEFAULT_TRANSACTION_QUERY, NOW)).toEqual([]);
+  });
+});
+
+describe("queryTransactions range", () => {
+  it("resolves a relative range against now, like the Overview", () => {
+    // 7d = 2026-06-11 .. 2026-06-17 inclusive.
+    expect(ids({ range: "7d" })).toEqual([]);
+    // 30d starts 2026-05-19, so every fixture is inside.
+    expect(ids({ range: "30d" })).toEqual(["d", "b", "c", "a"]);
+    const later = new Date("2026-06-12T09:00:00.000Z");
+    // 2026-06-06 .. 2026-06-12: only d.
+    expect(queryTransactions(txs, query({ range: "7d" }), later).map((tx) => tx.id)).toEqual(["d"]);
   });
 });
 
@@ -118,7 +134,7 @@ describe("queryTransactions sorting", () => {
 
   it("does not mutate its input", () => {
     const before = txs.map((tx) => tx.id);
-    queryTransactions(txs, query({ sort: { field: "amount", dir: "asc" } }));
+    queryTransactions(txs, query({ sort: { field: "amount", dir: "asc" } }), NOW);
     expect(txs.map((tx) => tx.id)).toEqual(before);
   });
 });
@@ -166,9 +182,35 @@ describe("URL params", () => {
     expect(parsed.categories).toEqual(["meals"]);
   });
 
+  it("round-trips a range and lets it win over explicit dates", () => {
+    const parsed = parseTransactionQuery(new URLSearchParams("range=90d&from=2026-01-01&to=2026-02-01"));
+    expect(parsed.range).toBe("90d");
+    expect(parsed.from).toBeUndefined();
+    expect(parsed.to).toBeUndefined();
+    expect(toSearchParams(parsed).toString()).toBe("range=90d");
+    expect(parseTransactionQuery(new URLSearchParams("range=1y")).range).toBeUndefined();
+  });
+
   it("normalizes search whitespace and swaps reversed date bounds", () => {
     const parsed = parseTransactionQuery(new URLSearchParams("q=%20%20coffee%20%20meeting%20&from=2026-06-30&to=2026-06-01"));
     expect(parsed.search).toBe("coffee meeting");
     expect(parsed).toMatchObject({ from: "2026-06-01", to: "2026-06-30" });
+  });
+});
+
+describe("filteredTotals", () => {
+  it("sums external in and out, counting transfers and failed items separately", () => {
+    const transfer = makeTransfer("op", "res", 50_000, "2026-06-06T15:00:00.000Z");
+    expect(filteredTotals([...txs, ...transfer])).toEqual({
+      inCents: 125_000,
+      // b (completed) + c (pending); d failed is excluded.
+      outCents: 129_500,
+      transferCount: 2,
+      failedCount: 1,
+    });
+  });
+
+  it("is all zeros for an empty list", () => {
+    expect(filteredTotals([])).toEqual({ inCents: 0, outCents: 0, transferCount: 0, failedCount: 0 });
   });
 });

@@ -2,9 +2,11 @@
  * Transaction search, filtering and sorting, plus a tolerant mapping to and
  * from URL search params so the filter state can live in the URL.
  */
+import { RANGE_KEYS, resolveRange, type RangeKey } from "./analytics";
 import { CATEGORY_IDS, isCategoryId, type CategoryId } from "./categories";
 import { isIsoDate } from "./dates";
-import { TRANSACTION_STATUSES, type Transaction, type TransactionStatus } from "./types";
+import type { Cents } from "./money";
+import { isTransferLeg, TRANSACTION_STATUSES, type Transaction, type TransactionStatus } from "./types";
 
 export type DirectionFilter = "all" | "in" | "out";
 export type SortField = "date" | "amount";
@@ -17,6 +19,11 @@ export type TransactionQuery = {
   statuses: TransactionStatus[];
   categories: CategoryId[];
   accountIds: string[];
+  /**
+   * A relative period, resolved against "now" exactly like the Overview
+   * ranges (see `resolveRange`). When set, `from`/`to` are dropped.
+   */
+  range?: RangeKey;
   /** Inclusive UTC calendar dates, `YYYY-MM-DD`. */
   from?: string;
   to?: string;
@@ -36,7 +43,9 @@ function searchTokens(search: string): string[] {
   return search.toLowerCase().split(/\s+/).filter(Boolean);
 }
 
-function matches(tx: Transaction, query: TransactionQuery, tokens: readonly string[]): boolean {
+type Bounds = { start: number; end: number } | undefined;
+
+function matches(tx: Transaction, query: TransactionQuery, tokens: readonly string[], bounds: Bounds): boolean {
   if (query.direction === "in" && tx.amountCents < 0) return false;
   if (query.direction === "out" && tx.amountCents > 0) return false;
   if (query.statuses.length > 0 && !query.statuses.includes(tx.status)) return false;
@@ -46,6 +55,10 @@ function matches(tx: Transaction, query: TransactionQuery, tokens: readonly stri
   const day = tx.occurredAt.slice(0, 10);
   if (query.from && day < query.from) return false;
   if (query.to && day > query.to) return false;
+  if (bounds) {
+    const time = Date.parse(tx.occurredAt);
+    if (time < bounds.start || time >= bounds.end) return false;
+  }
 
   if (tokens.length === 0) return true;
   const haystack = [tx.counterparty, tx.description, tx.reference, tx.note ?? ""].join(" ").toLowerCase();
@@ -56,17 +69,23 @@ function matches(tx: Transaction, query: TransactionQuery, tokens: readonly stri
  * Filters and sorts transactions. Search is case-insensitive; every
  * whitespace-separated token must appear in the counterparty, description,
  * reference or note. Amount sorts by absolute value. Ties break on id
- * (ascending) so the order is always stable.
+ * (ascending) so the order is always stable. `now` resolves `query.range`.
  */
-export function queryTransactions(transactions: readonly Transaction[], query: TransactionQuery): Transaction[] {
+export function queryTransactions(
+  transactions: readonly Transaction[],
+  query: TransactionQuery,
+  now: Date,
+): Transaction[] {
   const tokens = searchTokens(query.search);
+  const range = query.range ? resolveRange(query.range, now) : undefined;
+  const bounds: Bounds = range ? { start: range.start.getTime(), end: range.end.getTime() } : undefined;
   const { field, dir } = query.sort;
   const sign = dir === "asc" ? 1 : -1;
   const sortValue =
     field === "date" ? (tx: Transaction) => Date.parse(tx.occurredAt) : (tx: Transaction) => Math.abs(tx.amountCents);
 
   return transactions
-    .filter((tx) => matches(tx, query, tokens))
+    .filter((tx) => matches(tx, query, tokens, bounds))
     .map((tx) => ({ tx, value: sortValue(tx) }))
     .sort((a, b) => sign * (a.value - b.value) || (a.tx.id < b.tx.id ? -1 : a.tx.id > b.tx.id ? 1 : 0))
     .map(({ tx }) => tx);
@@ -81,6 +100,7 @@ const PARAM = {
   statuses: "status",
   categories: "category",
   accountIds: "account",
+  range: "range",
   from: "from",
   to: "to",
   sort: "sort",
@@ -102,9 +122,10 @@ function canonical<T extends string>(values: readonly string[], known: readonly 
 }
 
 function normalize(query: TransactionQuery): TransactionQuery {
+  const range = query.range && RANGE_KEYS.includes(query.range) ? query.range : undefined;
   let { from, to } = query;
-  from = from && isIsoDate(from) ? from : undefined;
-  to = to && isIsoDate(to) ? to : undefined;
+  from = !range && from && isIsoDate(from) ? from : undefined;
+  to = !range && to && isIsoDate(to) ? to : undefined;
   if (from && to && from > to) [from, to] = [to, from];
 
   return {
@@ -113,6 +134,7 @@ function normalize(query: TransactionQuery): TransactionQuery {
     statuses: canonical(query.statuses, TRANSACTION_STATUSES),
     categories: canonical(query.categories, CATEGORY_IDS),
     accountIds: [...new Set(query.accountIds.filter((id) => ACCOUNT_ID.test(id)))].sort(),
+    ...(range ? { range } : {}),
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
     sort: query.sort,
@@ -122,6 +144,7 @@ function normalize(query: TransactionQuery): TransactionQuery {
 /** Never throws: unknown or invalid values fall back to the defaults. */
 export function parseTransactionQuery(params: URLSearchParams): TransactionQuery {
   const direction = params.get(PARAM.direction);
+  const range = params.get(PARAM.range);
   const [sortField, sortDir] = (params.get(PARAM.sort) ?? "").split("-");
 
   return normalize({
@@ -132,6 +155,7 @@ export function parseTransactionQuery(params: URLSearchParams): TransactionQuery
     ),
     categories: listParam(params, PARAM.categories).filter(isCategoryId),
     accountIds: listParam(params, PARAM.accountIds),
+    range: RANGE_KEYS.find((key) => key === range),
     from: params.get(PARAM.from) ?? undefined,
     to: params.get(PARAM.to) ?? undefined,
     sort:
@@ -150,6 +174,7 @@ export function toSearchParams(query: TransactionQuery): URLSearchParams {
   if (q.statuses.length > 0) params.set(PARAM.statuses, q.statuses.join(","));
   if (q.categories.length > 0) params.set(PARAM.categories, q.categories.join(","));
   if (q.accountIds.length > 0) params.set(PARAM.accountIds, q.accountIds.join(","));
+  if (q.range) params.set(PARAM.range, q.range);
   if (q.from) params.set(PARAM.from, q.from);
   if (q.to) params.set(PARAM.to, q.to);
   const { field, dir } = q.sort;
@@ -157,4 +182,31 @@ export function toSearchParams(query: TransactionQuery): URLSearchParams {
     params.set(PARAM.sort, `${field}-${dir}`);
   }
   return params;
+}
+
+export type FilteredTotals = {
+  /** Completed and pending external inflows (positive). */
+  inCents: Cents;
+  /** Completed and pending external outflows (positive magnitude). */
+  outCents: Cents;
+  /** Internal transfer legs in the set: listed, but never counted as in/out. */
+  transferCount: number;
+  /** Failed items in the set: listed, but never counted. */
+  failedCount: number;
+};
+
+/**
+ * Money in and out across a filtered list. Internal transfers and failed
+ * items are excluded from the totals and counted separately, so the totals
+ * never treat money moved between own accounts as income or spend.
+ */
+export function filteredTotals(transactions: readonly Transaction[]): FilteredTotals {
+  const totals: FilteredTotals = { inCents: 0, outCents: 0, transferCount: 0, failedCount: 0 };
+  for (const tx of transactions) {
+    if (isTransferLeg(tx)) totals.transferCount += 1;
+    else if (tx.status === "failed") totals.failedCount += 1;
+    else if (tx.amountCents > 0) totals.inCents += tx.amountCents;
+    else totals.outCents -= tx.amountCents;
+  }
+  return totals;
 }
