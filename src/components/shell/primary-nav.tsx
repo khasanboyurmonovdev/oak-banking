@@ -4,7 +4,7 @@ import { ArrowLeftRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { useMoveMoney } from "@/components/move-money/move-money-provider";
+import { prefetchMoveMoney, useMoveMoney } from "@/components/move-money/move-money-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -120,6 +120,8 @@ export function BottomNav() {
         <li className="min-w-0">
           <button
             type="button"
+            onPointerEnter={prefetchMoveMoney}
+            onFocus={prefetchMoveMoney}
             onClick={() => openMoveMoney()}
             className="flex h-16 w-full flex-col items-center justify-center gap-1 px-0.5 text-[11px] font-medium text-foreground focus-visible:-outline-offset-4"
           >

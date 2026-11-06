@@ -6,7 +6,7 @@ import Link from "next/link";
 import { formatMoney } from "@/domain/money";
 import { SignedAmount } from "@/components/amount";
 import { EmptyState, ErrorState } from "@/components/data-state";
-import { useMoveMoney } from "@/components/move-money/move-money-provider";
+import { prefetchMoveMoney, useMoveMoney } from "@/components/move-money/move-money-provider";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -133,6 +133,8 @@ export function AccountCard({ account }: { account: AccountWithBalance }) {
             size="lg"
             className="bg-surface"
             disabled={!active}
+            onPointerEnter={prefetchMoveMoney}
+            onFocus={prefetchMoveMoney}
             onClick={() => openMoveMoney({ fromAccountId: account.id })}
           >
             <ArrowLeftRight aria-hidden="true" />
