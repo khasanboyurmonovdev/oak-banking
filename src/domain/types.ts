@@ -61,6 +61,9 @@ export type TransferLeg = TransactionBase & {
 
 export type Transaction = ExternalTransaction | TransferLeg;
 
+/** Longest allowed transaction note, after trimming. */
+export const MAX_NOTE_LENGTH = 500;
+
 export type Direction = "in" | "out";
 
 export function directionOf(transaction: Pick<Transaction, "amountCents">): Direction {

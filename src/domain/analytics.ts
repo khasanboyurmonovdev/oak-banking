@@ -191,10 +191,26 @@ export const RUNWAY_TRAILING_MONTHS = 3;
  * is not burning (average net ≥ 0), and 0 when no cash is available.
  */
 export function runwayMonths(availableCents: Cents, transactions: readonly Transaction[], now: Date): number | null {
+  return runwayEstimate(availableCents, transactions, now).months;
+}
+
+export type RunwayEstimate = {
+  /** See `runwayMonths`. */
+  months: number | null;
+  /** Average monthly net over the basis months, rounded to whole cents (negative = burn). */
+  averageMonthlyNetCents: Cents;
+  /** The full calendar months averaged, oldest first, as `YYYY-MM`. */
+  basisMonths: string[];
+};
+
+/** `runwayMonths` together with the basis it was computed from. */
+export function runwayEstimate(availableCents: Cents, transactions: readonly Transaction[], now: Date): RunwayEstimate {
   const end = startOfUtcMonth(now);
   const start = addUtcMonths(end, -RUNWAY_TRAILING_MONTHS);
   const averageNet = summarize(transactions, start, end).netCents / RUNWAY_TRAILING_MONTHS;
-  if (averageNet >= 0) return null;
-  if (availableCents <= 0) return 0;
-  return availableCents / -averageNet;
+  const basisMonths = Array.from({ length: RUNWAY_TRAILING_MONTHS }, (_, index) =>
+    addUtcMonths(start, index).toISOString().slice(0, 7),
+  );
+  const months = averageNet >= 0 ? null : availableCents <= 0 ? 0 : availableCents / -averageNet;
+  return { months, averageMonthlyNetCents: Math.round(averageNet), basisMonths };
 }

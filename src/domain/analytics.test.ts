@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cashFlowSeries, categorySpend, periodSummary, RANGE_KEYS, resolveRange, runwayMonths } from "./analytics";
+import { cashFlowSeries, categorySpend, periodSummary, RANGE_KEYS, resolveRange, runwayEstimate, runwayMonths } from "./analytics";
 import { ledgerBalance } from "./balances";
 import { generateSeed } from "./seed";
 import { makeAccount, makeTransfer, makeTx } from "./test-fixtures";
@@ -117,6 +117,14 @@ describe("runwayMonths", () => {
 
   it("returns 0 when nothing is available", () => {
     expect(runwayMonths(-5_000, history, NOW)).toBe(0);
+  });
+
+  it("reports the basis it used", () => {
+    expect(runwayEstimate(200_000, history, NOW)).toEqual({
+      months: 10,
+      averageMonthlyNetCents: -20_000,
+      basisMonths: ["2026-03", "2026-04", "2026-05"],
+    });
   });
 });
 
