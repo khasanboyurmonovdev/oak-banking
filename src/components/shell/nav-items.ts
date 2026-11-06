@@ -1,4 +1,4 @@
-import { LayoutGrid, ReceiptText, type LucideIcon } from "lucide-react";
+import { Landmark, LayoutGrid, ReceiptText, Settings, type LucideIcon } from "lucide-react";
 
 export type NavItem = {
   href: string;
@@ -10,6 +10,8 @@ export type NavItem = {
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", label: "Overview", icon: LayoutGrid },
   { href: "/transactions", label: "Transactions", icon: ReceiptText },
+  { href: "/accounts", label: "Accounts", icon: Landmark },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function isNavItemActive(pathname: string, href: string): boolean {
