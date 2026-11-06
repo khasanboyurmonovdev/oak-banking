@@ -1,8 +1,16 @@
 import Link from "next/link";
 
 import { OakMark } from "@/components/brand/oak-mark";
+import { SEED_COMPANY } from "@/domain/seed";
+import { ACCOUNT_KINDS } from "@/domain/types";
 
 import { BottomNav, RailNav, SidebarNav } from "./primary-nav";
+
+/** Fictional signed-in user for the demo. There is no authentication. */
+const DEMO_USER = { name: "Avery Lindqvist", role: "Finance lead", initials: "AL" };
+
+/** Every sandbox is seeded with one account of each kind. */
+const ACCOUNT_COUNT = ACCOUNT_KINDS.length;
 
 /**
  * Responsive application frame.
@@ -25,10 +33,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-[15px] font-semibold tracking-tight text-foreground">Oak Banking</span>
           </Link>
         </div>
+        <div className="mx-3 mb-2 rounded-lg border border-sidebar-border px-3 py-2.5">
+          <p className="truncate font-medium text-foreground">{SEED_COMPANY.name}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{ACCOUNT_COUNT} accounts</p>
+        </div>
         <SidebarNav />
-        <p className="border-t border-sidebar-border px-5 py-4 text-xs text-subtle-foreground">
-          Demo environment · simulated data
-        </p>
+        <div className="border-t border-sidebar-border px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-semibold text-brand-hover"
+            >
+              {DEMO_USER.initials}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-medium text-foreground">{DEMO_USER.name}</p>
+              <p className="truncate text-xs text-muted-foreground">{DEMO_USER.role}</p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-subtle-foreground">Demo environment · simulated data</p>
+        </div>
       </aside>
 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-16 flex-col items-center border-r border-sidebar-border bg-sidebar md:flex lg:hidden">
