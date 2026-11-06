@@ -42,6 +42,16 @@
   --info: #2f69b3;
   --info-background: #edf4fd;
 
+  /*
+   * Chart series. Validated as a pair (dataviz validate_palette.js, light):
+   * CVD ΔE 18.7, normal ΔE 28.7. Money out sits below 3:1 on white, so every
+   * chart also carries a legend, exact-value tooltips and a text summary.
+   */
+  --chart-in: #167a55;
+  --chart-out: #dda35c;
+  --chart-balance: var(--text-primary);
+  --chart-grid: var(--border-default);
+
   /* shadcn theme variables, mapped onto the tokens above */
   --background: var(--app-background);
   --foreground: var(--text-primary);
@@ -125,6 +135,8 @@
   --color-danger-background: var(--danger-background);
   --color-info: var(--info);
   --color-info-background: var(--info-background);
+  --color-chart-in: var(--chart-in);
+  --color-chart-out: var(--chart-out);
 
   /* Radii: small controls 6, inputs/buttons 8, containers 10–12, large surfaces 16 */
   --radius-sm: 6px;

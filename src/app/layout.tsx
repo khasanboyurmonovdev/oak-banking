@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppShell } from "@/components/shell/app-shell";
+import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
@@ -34,7 +35,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <body className="min-h-dvh">
         <TooltipProvider>
-          <AppShell>{children}</AppShell>
+          <Toaster>
+            <AppShell>{children}</AppShell>
+          </Toaster>
         </TooltipProvider>
       </body>
     </html>
