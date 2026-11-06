@@ -73,8 +73,8 @@ Local network note: this machine's Avast web shield intercepts HTTPS, and the us
 - [x] Phase 1B: domain layer (types, seed data, selectors, tests)
 - [x] Phase 2A: backend (node:sqlite, repositories, services, sessions, API, tests)
 - [ ] Phase 2B: Nginx + PM2 skeleton deploy to VPS (config prepared; not yet deployed)
-- [ ] Phase 3: Overview
-- [ ] Phase 4: Transactions
+- [x] Phase 3: Overview
+- [x] Phase 4: Transactions
 - [ ] Phase 5: Transfers/payments, Cards, Accounts
 - [ ] Phase 6: Analytics
 - [ ] Phase 7: Polish, verification, README, final deploy, submission
