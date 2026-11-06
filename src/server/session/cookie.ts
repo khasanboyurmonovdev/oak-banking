@@ -43,6 +43,7 @@ export function readCookie(header: string | null, name: string): string | undefi
   return undefined;
 }
 
+/** `X-Forwarded-Proto` is set by Nginx, the only caller of the loopback-bound app. */
 export function isHttpsRequest(request: Request): boolean {
   const forwarded = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   return forwarded ? forwarded === "https" : new URL(request.url).protocol === "https:";

@@ -161,6 +161,23 @@ describe("POST /api/transfers", () => {
     expect(malformed.status).toBe(400);
   });
 
+  it("accepts the public origin behind Nginx and rejects others", async () => {
+    // Headers as deploy/nginx/oak-banking.conf sets them for http://31.97.188.5:8081.
+    const proxied = {
+      "idempotency-key": key,
+      host: "31.97.188.5:8081",
+      "x-forwarded-host": "31.97.188.5:8081",
+      "x-forwarded-proto": "http",
+      "x-forwarded-for": "203.0.113.7",
+    };
+    const viaNginx = (origin: string) =>
+      postTransfer(send("POST", "/api/transfers", body, sessionCookie().header, { ...proxied, origin }));
+    expect((await viaNginx("http://31.97.188.5:8081")).status).toBe(201);
+    expect((await viaNginx("http://31.97.188.5:5050")).status).toBe(403);
+    expect((await viaNginx("http://evil.example")).status).toBe(403);
+    expect((await viaNginx("null")).status).toBe(403);
+  });
+
   it("rate-limits mutations per session with 429 and Retry-After", async () => {
     const { header } = sessionCookie();
     const statuses: number[] = [];

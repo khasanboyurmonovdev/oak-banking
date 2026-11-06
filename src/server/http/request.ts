@@ -43,6 +43,13 @@ export function parseSearchParams<T>(schema: z.ZodType<T>, request: Request): T 
   return parseInput(schema, Object.fromEntries(new URL(request.url).searchParams), "Invalid query parameters.");
 }
 
+/**
+ * Rejects mutations whose `Origin` host differs from the host the browser
+ * addressed. `X-Forwarded-Host` is trusted only because production binds the
+ * app to 127.0.0.1, so Nginx is the sole caller and it overwrites the header
+ * with `$http_host` (deploy/nginx/oak-banking.conf). Exposing the port
+ * directly would let clients choose this header.
+ */
 function assertSameOrigin(request: Request): void {
   const origin = request.headers.get("origin");
   if (origin === null) return;

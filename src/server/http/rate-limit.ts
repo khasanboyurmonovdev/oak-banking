@@ -44,6 +44,10 @@ export class TokenBucketLimiter {
 /** Mutations: bursts of 20, then one every 2 seconds, per session (or IP). */
 export const mutationLimiter = new TokenBucketLimiter(20, 0.5);
 
+/**
+ * Trusted only behind the loopback-bound deployment: Nginx overwrites
+ * `X-Forwarded-For` with `$remote_addr`, so the first value is the real peer.
+ */
 export function clientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   return forwarded || request.headers.get("x-real-ip")?.trim() || "unknown";

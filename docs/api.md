@@ -51,6 +51,10 @@ No session needed. Runs `SELECT 1` and returns `{ "data": { "status": "ok" } }`.
 
 ## Protections on mutations
 
-These are checked in order: same origin (when `Origin` is present), rate limit, session, JSON content type, 8 KB body cap, then JSON and Zod validation. The rate limit is an in-memory token bucket (burst of 20, then 1 every 2 s), keyed by session, with the client IP as a fallback. It is per process: it resets on restart and isn't shared across replicas, which is fine for this single-container demo.
+These are checked in order: same origin (when `Origin` is present), rate limit, session, JSON content type, 8 KB body cap, then JSON and Zod validation. The rate limit is an in-memory token bucket (burst of 20, then 1 every 2 s), keyed by session, with the client IP as a fallback. It is per process: it resets on restart and isn't shared across replicas, which is fine for this single-process demo.
 
 Security headers (set for every route in `next.config.ts`): CSP, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy` and `Permissions-Policy`. There's no HSTS because the demo is served over HTTP.
+
+## Proxy trust
+
+The origin check reads `X-Forwarded-Host` (falling back to `Host`), the rate limiter keys anonymous callers by `X-Forwarded-For`, and the cookie's `Secure` flag follows `X-Forwarded-Proto`. These headers are trusted only because production binds the app to `127.0.0.1:5050`, so Nginx is its only caller, and Nginx overwrites all three on every request (`deploy/nginx/oak-banking.conf`). Never expose the app port directly.
