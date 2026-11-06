@@ -1,13 +1,22 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 import { RANGE_KEYS, RANGE_LABELS, resolveRange, type RangeKey } from "@/domain/analytics";
 import { formatMoney } from "@/domain/money";
 import { EmptyState } from "@/components/data-state";
 import { SegmentedControl } from "@/components/segmented-control";
 import type { Overview } from "@/server/services/overview";
+import { bucketLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-import { bucketLabel, CashFlowChart } from "./cash-flow-chart";
+import { CashFlowChartSkeleton } from "./cash-flow-chart-skeleton";
+
+/** Recharts is the heaviest code on the page; the totals, figure summary and table never wait for it. */
+const CashFlowChart = dynamic(() => import("./cash-flow-chart").then((mod) => mod.CashFlowChart), {
+  ssr: false,
+  loading: () => <CashFlowChartSkeleton />,
+});
 
 const RANGE_OPTIONS = RANGE_KEYS.map((key) => ({ value: key, label: RANGE_LABELS[key] }));
 

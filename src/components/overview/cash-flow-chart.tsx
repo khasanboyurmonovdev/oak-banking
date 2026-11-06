@@ -4,16 +4,12 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 
 import type { BucketUnit, CashFlowBucket } from "@/domain/analytics";
 import { formatMoney } from "@/domain/money";
-import { formatDate, formatMonth, formatShortDate } from "@/lib/format";
+import { bucketLabel, formatMonth, formatShortDate } from "@/lib/format";
+
+import { BALANCE_PANE_HEIGHT, FLOWS_PANE_HEIGHT } from "./cash-flow-chart-skeleton";
 
 const Y_AXIS_WIDTH = 64;
 const AXIS_TICK = { fill: "var(--text-secondary)", fontSize: 12 };
-
-export function bucketLabel(start: string, unit: BucketUnit): string {
-  if (unit === "month") return formatMonth(start);
-  if (unit === "week") return `Week of ${formatDate(start)}`;
-  return formatDate(start);
-}
 
 function tickLabel(start: string, unit: BucketUnit): string {
   if (unit === "month") return formatMonth(start).split(" ")[0] ?? start;
@@ -77,7 +73,7 @@ export function CashFlowChart({ buckets, unit }: { buckets: readonly CashFlowBuc
   return (
     <div aria-hidden="true" className="select-none">
       <p className="mb-1 text-xs font-medium text-muted-foreground">Closing balance</p>
-      <ResponsiveContainer width="100%" height={112}>
+      <ResponsiveContainer width="100%" height={BALANCE_PANE_HEIGHT}>
         <LineChart data={data} syncId="cash-flow" margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
           <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
           <XAxis {...xAxis} hide />
@@ -95,7 +91,7 @@ export function CashFlowChart({ buckets, unit }: { buckets: readonly CashFlowBuc
       </ResponsiveContainer>
 
       <p className="mt-3 mb-1 text-xs font-medium text-muted-foreground">Money in and out</p>
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={FLOWS_PANE_HEIGHT}>
         <BarChart
           data={data}
           syncId="cash-flow"

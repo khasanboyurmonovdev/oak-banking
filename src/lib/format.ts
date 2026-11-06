@@ -3,6 +3,7 @@
  * calendar the domain filters and buckets in, so a transaction never appears
  * under a different day than the one it is filtered by.
  */
+import type { BucketUnit } from "@/domain/analytics";
 import type { AccountKind, TransactionMethod } from "@/domain/types";
 
 const dateFormat = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
@@ -52,6 +53,13 @@ export function formatDateTime(iso: string): string {
 /** `YYYY-MM` → "Aug 2026" */
 export function formatYearMonth(yearMonth: string): string {
   return formatMonth(`${yearMonth}-01T00:00:00.000Z`);
+}
+
+/** A cash-flow bucket by its start date: "Aug 2026", "Week of Nov 2, 2026" or "Nov 6, 2026". */
+export function bucketLabel(start: string, unit: BucketUnit): string {
+  if (unit === "month") return formatMonth(start);
+  if (unit === "week") return `Week of ${formatDate(start)}`;
+  return formatDate(start);
 }
 
 /** The account's product type, shown next to its name (which already says its purpose). */
