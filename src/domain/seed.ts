@@ -6,7 +6,7 @@
  * History runs for 365 days up to and including yesterday (UTC). Nothing is
  * dated today, so the output never depends on the time of day of `now`.
  */
-import { addUtcDays, DAY_MS, isUtcWeekend, startOfUtcDay } from "./dates";
+import { addUtcDays, DAY_MS, isUtcBusinessDay, isUtcWeekend, startOfUtcDay } from "./dates";
 import type { Cents } from "./money";
 import { createRng, referenceFor, type Rng } from "./prng";
 import { buildTransferLegs } from "./transfers";
@@ -68,15 +68,16 @@ function external(draft: Draft): ExternalTransaction {
   return { ...draft, id: "", reference: "", status: draft.status ?? "completed" };
 }
 
+// ACH and wires only move on business days: weekends and US bank holidays are skipped.
 function rollForwardToBusinessDay(date: Date): Date {
   let day = date;
-  while (isUtcWeekend(day)) day = addUtcDays(day, 1);
+  while (!isUtcBusinessDay(day)) day = addUtcDays(day, 1);
   return day;
 }
 
 function rollBackToBusinessDay(date: Date): Date {
   let day = date;
-  while (isUtcWeekend(day)) day = addUtcDays(day, -1);
+  while (!isUtcBusinessDay(day)) day = addUtcDays(day, -1);
   return day;
 }
 
@@ -84,7 +85,7 @@ function sameDay(a: Date, b: Date): boolean {
   return a.getTime() === b.getTime();
 }
 
-/** True when a monthly item due on `dayOfMonth` (≤ 26) falls on `day`, rolled forward past weekends. */
+/** True when a monthly item due on `dayOfMonth` (≤ 26) falls on `day`, rolled forward to a business day. */
 function dueOn(day: Date, dayOfMonth: number): boolean {
   const due = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), dayOfMonth));
   return sameDay(rollForwardToBusinessDay(due), day);
@@ -96,7 +97,7 @@ function jitter(rng: Rng, cents: Cents, spread: number): Cents {
 
 type PayrollRun = { runIndex: number; fundingIndex: number; amountCents: Cents; label: string };
 
-/** Semi-monthly runs on the 15th and the last day (earlier if a weekend). */
+/** Semi-monthly runs on the 15th and the last day (earlier if not a business day). */
 function schedulePayroll(rng: Rng, firstDay: Date): PayrollRun[] {
   const runs: PayrollRun[] = [];
   const indexOf = (date: Date) => Math.round((date.getTime() - firstDay.getTime()) / DAY_MS);
@@ -116,7 +117,8 @@ function schedulePayroll(rng: Rng, firstDay: Date): PayrollRun[] {
         runIndex,
         fundingIndex,
         amountCents: Math.round(headcount * 6_140_00 * (1 + rng.next() * 0.03 - 0.012)),
-        label: `${MONTHS[due.getUTCMonth()]} ${due.getUTCDate()}`,
+        // Named after the day the run is actually paid, which may precede the due date.
+        label: `${MONTHS[runDate.getUTCMonth()]} ${runDate.getUTCDate()}`,
       });
     }
   }
@@ -300,6 +302,7 @@ export function generateSeed({ now, seed = DEFAULT_SEED }: SeedOptions): SeedDat
     const day = addUtcDays(firstDay, i);
     const month = day.getUTCMonth();
     const weekend = isUtcWeekend(day);
+    const businessDay = isUtcBusinessDay(day);
     const growth = 1 + (0.3 * i) / HISTORY_DAYS;
     const today: Transaction[] = [];
 
@@ -350,7 +353,7 @@ export function generateSeed({ now, seed = DEFAULT_SEED }: SeedOptions): SeedDat
       }
     }
 
-    if (!weekend) {
+    if (businessDay) {
       for (const vendor of MONTHLY_VENDORS) {
         if (!dueOn(day, vendor.dayOfMonth)) continue;
         today.push(
@@ -619,11 +622,15 @@ function buildOneOffs(rng: Rng, near: (index: number) => number): OneOff[] {
   return oneOffs;
 }
 
-/** 6–9 pending items spread over the last 3 days, mostly outflows (holds). */
+/**
+ * 6–9 pending items, mostly outflows (holds). Card items fall in the last 3
+ * days; ACH and wires on the latest business day, which after a long weekend
+ * can be up to 3 days before that window.
+ */
 function pendingItems(rng: Rng, firstDay: Date, at: At): Transaction[] {
   const days = Array.from({ length: PENDING_DAYS }, (_, k) => addUtcDays(firstDay, HISTORY_DAYS - PENDING_DAYS + k));
-  const businessDays = days.filter((day) => !isUtcWeekend(day));
-  const lastBusinessDay = businessDays[businessDays.length - 1] ?? days[days.length - 1];
+  const lastBusinessDay = rollBackToBusinessDay(days[days.length - 1]);
+  const businessDays = days.filter(isUtcBusinessDay);
 
   const items: Transaction[] = [];
   const cardCount = rng.int(3, 5);
@@ -660,7 +667,7 @@ function pendingItems(rng: Rng, firstDay: Date, at: At): Transaction[] {
       description: "Invoice QF-PO-118 payment",
       category: "customer_payment",
       method: "ach",
-      occurredAt: at(rng.pick(businessDays.length > 0 ? businessDays : days), 15),
+      occurredAt: at(rng.pick(businessDays.length > 0 ? businessDays : [lastBusinessDay]), 15),
       status: "pending",
     }),
   );

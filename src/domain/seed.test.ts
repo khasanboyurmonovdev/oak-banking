@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 import { runwayMonths } from "./analytics";
 import { consolidatedBalance } from "./balances";
 import { CATEGORY_IDS } from "./categories";
-import { addUtcDays, DAY_MS, startOfUtcDay } from "./dates";
+import { addUtcDays, DAY_MS, isUtcBusinessDay, startOfUtcDay } from "./dates";
 import { generateSeed } from "./seed";
 import { TRANSACTION_METHODS, TRANSACTION_STATUSES, type Transaction } from "./types";
 
 const NOW = new Date("2026-11-06T09:30:00.000Z");
 
-// Month ends, year ends and a leap day shift every calendar-driven schedule.
+// Month ends, year ends, a leap day and the day after a holiday weekend shift
+// every calendar-driven schedule.
 const SAMPLE_DAYS = [
   "2026-11-06",
+  "2026-05-26",
   "2026-01-01",
   "2026-02-28",
   "2026-03-01",
@@ -124,15 +126,44 @@ describe.each(SAMPLE_DAYS)("seed invariants for %s", (now) => {
     }
   });
 
-  it("has 6–10 pending items, all in the last 3 days, mostly outflows", () => {
+  it("has 6–10 recent pending items, mostly outflows", () => {
     const pending = transactions.filter((tx) => tx.status === "pending");
     expect(pending.length).toBeGreaterThanOrEqual(6);
     expect(pending.length).toBeLessThanOrEqual(10);
-    const cutoff = addUtcDays(today, -3).getTime();
+    const cardCutoff = addUtcDays(today, -3).getTime();
+    expect(pending.filter((tx) => tx.method === "card").every((tx) => Date.parse(tx.occurredAt) >= cardCutoff)).toBe(
+      true,
+    );
+    // ACH and wires sit on the latest business day, at most 6 days back after a long weekend.
+    const cutoff = addUtcDays(today, -6).getTime();
     expect(pending.every((tx) => Date.parse(tx.occurredAt) >= cutoff)).toBe(true);
     const inflows = pending.filter((tx) => tx.amountCents > 0).length;
     expect(inflows).toBeGreaterThanOrEqual(1);
     expect(inflows).toBeLessThanOrEqual(2);
+  });
+
+  it("dates every ACH and wire on a business day (no weekends or US bank holidays)", () => {
+    const offDays = transactions.filter(
+      (tx) => (tx.method === "ach" || tx.method === "wire") && !isUtcBusinessDay(new Date(tx.occurredAt)),
+    );
+    expect(offDays.map((tx) => `${tx.id} ${tx.occurredAt}`)).toEqual([]);
+  });
+
+  it("labels each payroll run and its funding with the run's own date", () => {
+    const label = (iso: string) =>
+      new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const runs = transactions.filter((tx) => tx.category === "payroll");
+    for (const run of runs) expect(run.description).toBe(`Payroll run, ${label(run.occurredAt)}`);
+    const fundings = transactions.filter((tx) => tx.description.startsWith("Payroll funding"));
+    const runDays = new Set(runs.map((run) => label(run.occurredAt)));
+    for (const funding of fundings) {
+      const match = /^Payroll funding, (\w{3} \d{1,2}) run$/.exec(funding.description);
+      expect(match, funding.description).not.toBeNull();
+      // Funding for a run just past the history window has no matching run yet.
+      if (Date.parse(funding.occurredAt) < addUtcDays(today, -5).getTime()) {
+        expect(runDays.has(match?.[1] ?? ""), funding.description).toBe(true);
+      }
+    }
   });
 
   it("has 3–6 failed items spread across the year", () => {
