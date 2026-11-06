@@ -5,6 +5,7 @@ import { useCallback, useRef } from "react";
 import { formatMoney } from "@/domain/money";
 import type { SortField } from "@/domain/transaction-query";
 import { EmptyState, ErrorState } from "@/components/data-state";
+import { MoveMoneyButton } from "@/components/move-money/move-money-provider";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -137,7 +138,7 @@ export function TransactionsView() {
 
   return (
     <div className="grid gap-5">
-      <PageHeader title="Transactions" description="Activity across all accounts" />
+      <PageHeader title="Transactions" description="Activity across all accounts" actions={<MoveMoneyButton />} />
 
       <TransactionFilters
         query={query}

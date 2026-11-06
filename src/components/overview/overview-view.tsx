@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RANGE_KEYS, type RangeKey } from "@/domain/analytics";
 import { SEED_COMPANY } from "@/domain/seed";
 import { ErrorState } from "@/components/data-state";
+import { MoveMoneyButton } from "@/components/move-money/move-money-provider";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApi } from "@/hooks/use-api";
@@ -73,7 +74,11 @@ export function OverviewView() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="Overview" description={`${SEED_COMPANY.name} · As of ${formatDate(data.asOf)}`} />
+      <PageHeader
+        title="Overview"
+        description={`${SEED_COMPANY.name} · As of ${formatDate(data.asOf)}`}
+        actions={<MoveMoneyButton />}
+      />
       <BalanceHero overview={data} />
 
       <div className="grid gap-6 xl:grid-cols-3">
