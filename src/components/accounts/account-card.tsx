@@ -60,11 +60,22 @@ function RecentActivity({ account }: { account: AccountWithBalance }) {
   );
 }
 
-function BalanceRow({ label, cents, strong = false }: { label: string; cents: number; strong?: boolean }) {
+function BalanceRow({
+  label,
+  cents,
+  strong = false,
+  muted = false,
+}: {
+  label: string;
+  cents: number;
+  strong?: boolean;
+  muted?: boolean;
+}) {
+  const tone = muted ? "text-muted-foreground" : "text-foreground";
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={strong ? "num font-semibold text-foreground" : "num text-foreground"}>{formatMoney(cents)}</dd>
+      <dd className={strong ? `num font-semibold ${tone}` : `num ${tone}`}>{formatMoney(cents)}</dd>
     </div>
   );
 }
@@ -112,7 +123,8 @@ export function AccountCard({ account }: { account: AccountWithBalance }) {
           <BalanceRow label="Ledger balance" cents={ledgerCents} />
           <BalanceRow label="Pending holds" cents={holdsCents > 0 ? -holdsCents : 0} />
           <BalanceRow label="Available" cents={availableCents} strong />
-          {pendingInCents > 0 ? <BalanceRow label="Pending in (not yet available)" cents={pendingInCents} /> : null}
+          {/* Always rendered so the buttons and Recent activity line up across cards. */}
+          <BalanceRow label="Pending in (not yet available)" cents={pendingInCents} muted={pendingInCents === 0} />
         </dl>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">

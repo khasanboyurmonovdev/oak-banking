@@ -4,7 +4,6 @@ import { ArrowLeftRight } from "lucide-react";
 import { createContext, useCallback, useContext, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 import { MoveMoneyDialog } from "./move-money-dialog";
 
@@ -35,11 +34,11 @@ export function useMoveMoney(): OpenMoveMoney {
   return open;
 }
 
-/** The page-header entry point (tablet and desktop; mobile uses the bottom bar action). */
+/** The page-header entry point (PageHeader hides it on mobile, where the bottom bar has the action). */
 export function MoveMoneyButton({ className }: { className?: string }) {
   const openDialog = useMoveMoney();
   return (
-    <Button size="lg" className={cn("hidden md:inline-flex", className)} onClick={() => openDialog()}>
+    <Button size="lg" className={className} onClick={() => openDialog()}>
       <ArrowLeftRight aria-hidden="true" />
       Move money
     </Button>
