@@ -1,49 +1,93 @@
 # Oak Banking
 
-Oak Banking is a business-banking dashboard for a fictional company, built as a technical case study. It is planned to cover an account overview, transaction search and filtering with a detail view, cash-flow analytics, and simulated transfers and payments, in a responsive, accessible interface with an original visual identity.
+Oak Banking is a business-banking dashboard for a fictional company, built as a technical case study. It covers an account overview, transaction search and filtering with a detail view, cash-flow analytics, and simulated transfers and payments, in a responsive, accessible interface with an original visual identity. The backend and API are in place; the dashboard pages are being built phase by phase (see `CLAUDE.md` → Status).
 
-> **All banking in this project is simulated.** There is no real money, no real bank or account data, and no integration with any banking or payment provider. Every balance, transaction and action is demo data.
+Demo URL: http://31.97.188.5:8081 (skeleton deploy pending; see Deployment).
+
+## Demo disclosure
+
+- **All banking is simulated.** There is no real money, no real bank or account data, and no integration with any banking or payment provider. Every balance, transaction and action is demo data.
+- **Per-visitor sandbox.** Your first visit sets a signed session cookie and seeds a private copy of the demo company's data. Other visitors can't see or change it.
+- **Data resets.** A sandbox is deleted after 72 hours without use (or earlier if many visitors arrive), and resetting the demo data (`POST /api/demo/reset`; a Settings button is planned) restores the seed at any time.
+- **Plain HTTP.** The demo is served over HTTP on an IP address, without TLS. Don't enter anything you'd want to keep private.
 
 ## Stack
 
 - [Next.js](https://nextjs.org) (App Router) with React and TypeScript (strict)
-- Tailwind CSS with [shadcn/ui](https://ui.shadcn.com) (Radix primitives) and Lucide icons
-- Geist Sans and Geist Mono fonts
+- Tailwind CSS with [shadcn/ui](https://ui.shadcn.com) (Radix primitives), Lucide icons, Geist Sans and Geist Mono
+- Route Handlers → services → repositories → SQLite (`node:sqlite`, built into Node 24, so no native module to compile)
+- Zod for input validation, Vitest for tests
+- Recharts for charts (analytics phase)
 
-Planned for later phases: Recharts (charts), Zod (validation), Vitest (tests), and SQLite behind a repository layer.
+Money is stored as integer cents; balances, totals and chart series are derived by pure selectors in `src/domain/`. The API is documented in [docs/api.md](docs/api.md).
 
-## Getting started
+## Local setup
 
-Requires Node.js 20.9 or newer.
+Requires Node.js 24 or newer.
 
 ```bash
-npm install
-npm run dev
+npm ci
+cp .env.example .env.local   # optional in development; defaults are used otherwise
+npm run dev                  # http://localhost:3000
 ```
 
-Then open http://localhost:3000.
+| Command             | Purpose                                                           |
+| ------------------- | ----------------------------------------------------------------- |
+| `npm run dev`       | Dev server (Turbopack)                                            |
+| `npm run lint`      | ESLint                                                            |
+| `npm run typecheck` | Generate Next.js route types, then `tsc`                          |
+| `npm run test`      | Vitest: domain, services and route handlers on in-memory SQLite   |
+| `npm run build`     | Production build                                                  |
+| `npm run start`     | Serve the production build                                        |
 
-Other scripts:
+Environment variables (see `.env.example`):
 
-| Command             | Purpose                                     |
-| ------------------- | ------------------------------------------- |
-| `npm run lint`      | ESLint                                      |
-| `npm run typecheck` | Generate Next.js route types, then `tsc`    |
-| `npm run build`     | Production build                            |
-| `npm run start`     | Serve the production build                  |
+| Variable            | Default         | Notes                                                        |
+| ------------------- | --------------- | ------------------------------------------------------------ |
+| `DATABASE_PATH`     | `./data/oak.db` | SQLite file; its directory is created on first use           |
+| `SESSION_SECRET`    | dev-only value  | Required in production, at least 32 characters               |
+| `SESSION_TTL_HOURS` | `72`            | Sliding sandbox lifetime                                     |
+| `MAX_SESSIONS`      | `500`           | Sandboxes kept at once; least recently seen are evicted      |
 
-## Features
-
-To be completed.
-
-## Architecture
-
-To be completed.
-
-## AI-assisted workflow
-
-To be completed.
+`npm run start` exits at startup if `SESSION_SECRET` is missing or too short.
 
 ## Deployment
 
-To be completed.
+The demo runs on a shared Hostinger VPS without Docker:
+
+```
+browser ──HTTP :8081──▶ Nginx ──▶ 127.0.0.1:5050  next start (PM2 "oak-banking", Node 24)
+```
+
+- **Nginx** (`deploy/nginx/oak-banking.conf`) listens on 8081 and proxies to the app. It overwrites `Host`, `X-Forwarded-Host`, `X-Forwarded-Proto` and `X-Forwarded-For` on every request, so client-supplied values never reach the app, and rejects bodies over 16 KB.
+- **PM2** (`ecosystem.config.cjs`) runs one fork-mode instance with `/opt/node-24/bin/node`, from `/var/www/oak-banking`, bound to `127.0.0.1:5050`. It restarts above 400 MB of memory; `restart_delay`, `min_uptime` and `max_restarts` stop a crash loop (for example a missing `SESSION_SECRET`) from restarting forever.
+- **Secrets** live in `/etc/oak-banking.env` (root-owned, mode 600), loaded with `node --env-file`. They are never in the repository.
+
+**Proxy trust.** The app trusts the `X-Forwarded-*` headers for the same-origin check on mutations, rate-limit keys and the cookie's `Secure` flag. That is safe only because it listens on loopback, so Nginx is its sole caller. Don't expose port 5050.
+
+First deploy:
+
+```bash
+# /etc/oak-banking.env
+NODE_ENV=production
+DATABASE_PATH=/var/www/oak-banking/data/oak.db
+SESSION_SECRET=<48 random bytes, base64url>
+
+cd /var/www/oak-banking
+npm ci && npm run build
+pm2 start ecosystem.config.cjs && pm2 save
+sudo cp deploy/nginx/oak-banking.conf /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/oak-banking.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+curl -fsS http://127.0.0.1:5050/api/health && curl -fsS http://31.97.188.5:8081/api/health
+```
+
+Updates: `npm ci && npm run build && pm2 reload oak-banking`.
+
+## AI-assisted workflow
+
+The project is built with Claude Code as the implementing agent, working from written specs: the case-study requirements, a decisions log (`docs/DECISIONS.md`) and project rules in `CLAUDE.md` (architecture layering, money invariants, design and accessibility rules). Work proceeds in small phases; each phase is a scoped prompt.
+
+- **Claude Code implements** each phase and reports what it changed, the decisions it made and the command output.
+- **I review** every change before committing it: reading the diff, checking it against the specs, and asking for fixes where it falls short.
+- **Verification is by real commands**, not claims: lint, typecheck, Vitest (domain selectors, services, and route handlers against in-memory SQLite) and a production build every phase, plus smoke checks against the running app.

@@ -29,7 +29,10 @@ npm, Geist fonts, Vitest. Zustand is not needed, since server state flows throug
 6. Command palette (Cmd/Ctrl+K), only if time remains
 
 ## D8. Deployment
-Docker on the Hostinger VPS, served at `http://<VPS_IP>:<port>`. Inspect the VPS before changing anything and don't disrupt other services. A skeleton deploy happens right after the backend phase to surface infrastructure problems early.
+Nginx + PM2 on the shared Hostinger VPS, no Docker (overrides the earlier Docker plan). Nginx listens on :8081 and proxies to the app on `127.0.0.1:5050`, served at `http://31.97.188.5:8081` over plain HTTP (no domain). PM2 runs `next start` as `oak-banking` (fork mode, one instance) with Node 24 at `/opt/node-24/bin/node`; secrets live in `/etc/oak-banking.env`, outside the repo. Config: `ecosystem.config.cjs`, `deploy/nginx/oak-banking.conf`. Inspect the VPS before changing anything and don't disrupt other services. A skeleton deploy happens right after the backend phase to surface infrastructure problems early.
+
+## D10. Git
+The assistant does not run git commands. It leaves changes uncommitted and lists the changed files in its report; the developer reviews and commits.
 
 ## D9. Overview signature element
 The balance hero is a dark forest-green panel that shows the reconciliation: Ledger − Holds = Available, with Pending in alongside. Secondary metrics stay visually subordinate.

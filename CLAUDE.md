@@ -16,7 +16,7 @@ All banking is simulated. Never imply real money movement, and never integrate r
 Read the docs relevant to the current phase. Don't re-read all of them every time. If two sources conflict, follow the higher one and mention the conflict in your report.
 
 ## Stack
-Next.js (App Router), React, TypeScript (strict), Tailwind CSS, shadcn/ui, Lucide, Recharts, Zod, Vitest, SQLite behind a repository layer. Package manager: npm. Fonts: Geist Sans (UI) and Geist Mono (references/IDs). The SQLite driver is chosen in the backend phase and must install on both Windows (dev) and Linux/Docker (prod).
+Next.js (App Router), React, TypeScript (strict), Tailwind CSS, shadcn/ui, Lucide, Recharts, Zod, Vitest, SQLite behind a repository layer. Package manager: npm. Fonts: Geist Sans (UI) and Geist Mono (references/IDs). The SQLite driver is chosen in the backend phase and must install on both Windows (dev) and Linux (prod).
 
 ## Commands
 - `npm install`: install dependencies
@@ -26,6 +26,7 @@ Next.js (App Router), React, TypeScript (strict), Tailwind CSS, shadcn/ui, Lucid
 - `npm run test`: Vitest tests (domain, server and route handlers; node environment, in-memory SQLite)
 - `npm run build`: production build
 - `npm run start`: serve the production build (requires `SESSION_SECRET` ≥ 32 chars; exits at startup otherwise)
+- Node.js ≥ 24 (`engines`). Production: Nginx :8081 → PM2 `oak-banking` on `127.0.0.1:5050` (`ecosystem.config.cjs`, `deploy/nginx/oak-banking.conf`, env in `/etc/oak-banking.env`). See README "Deployment".
 - Env vars: see `.env.example` (`DATABASE_PATH`, `SESSION_SECRET`, `SESSION_TTL_HOURS`, `MAX_SESSIONS`). API reference: `docs/api.md`.
 - `npx shadcn@latest add <component>`: add a shadcn/ui component (radix base, style `radix-nova`)
 
@@ -61,7 +62,7 @@ Local network note: this machine's Avast web shield intercepts HTTPS, and the us
 - Work phase by phase. Do only the phase you were asked to do.
 - Inspect before changing. Never overwrite existing work or replace working config without a clear reason.
 - Verify with real commands (lint, typecheck, tests, build, dev server). Report actual results. Never claim something works unless you ran it. If you cannot verify something visually, say so.
-- Git: small conventional commits at the end of logical steps. Never push. Never commit secrets, `.env*` (except `.env.example`), or `*.db` files. `docs/PROJECT_BRIEF.md` is git-ignored.
+- Git: do not run git commands. Leave changes uncommitted and list the changed files in the report; the developer commits. The repo must never contain secrets, `.env*` (except `.env.example`), or `*.db` files. `docs/PROJECT_BRIEF.md` is git-ignored.
 - Ask a question only when a decision materially changes scope or architecture. Otherwise decide, and note the decision in your report.
 - Windows dev machine: keep npm scripts cross-platform (no `rm -rf`, no bash-only syntax), and mind path separators.
 - VPS: do not touch it until the deployment phase. Then inspect before changing, never disrupt other services, and never store credentials in the repo.
@@ -71,7 +72,7 @@ Local network note: this machine's Avast web shield intercepts HTTPS, and the us
 - [x] Phase 1A: scaffold, tooling, tokens, app shell
 - [x] Phase 1B: domain layer (types, seed data, selectors, tests)
 - [x] Phase 2A: backend (node:sqlite, repositories, services, sessions, API, tests)
-- [ ] Phase 2B: Dockerfile + skeleton deploy to VPS
+- [ ] Phase 2B: Nginx + PM2 skeleton deploy to VPS (config prepared; not yet deployed)
 - [ ] Phase 3: Overview
 - [ ] Phase 4: Transactions
 - [ ] Phase 5: Transfers/payments, Cards, Accounts
