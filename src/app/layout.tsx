@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { MoveMoneyProvider } from "@/components/move-money/move-money-provider";
 import { AppShell } from "@/components/shell/app-shell";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ApiRefreshProvider } from "@/hooks/use-api";
 
 import "./globals.css";
 
@@ -36,7 +38,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh">
         <TooltipProvider>
           <Toaster>
-            <AppShell>{children}</AppShell>
+            <ApiRefreshProvider>
+              <MoveMoneyProvider>
+                <AppShell>{children}</AppShell>
+              </MoveMoneyProvider>
+            </ApiRefreshProvider>
           </Toaster>
         </TooltipProvider>
       </body>

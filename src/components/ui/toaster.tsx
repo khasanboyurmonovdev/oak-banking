@@ -1,12 +1,19 @@
 "use client";
 
 import { CircleAlert, CircleCheck, XIcon } from "lucide-react";
+import Link from "next/link";
 import { Toast as ToastPrimitive } from "radix-ui";
 import { createContext, useCallback, useContext, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-type ToastInput = { title: string; description?: string; tone?: "success" | "error" };
+type ToastInput = {
+  title: string;
+  description?: string;
+  tone?: "success" | "error";
+  /** An optional link, e.g. to the record the action created. */
+  action?: { label: string; href: string };
+};
 type ToastItem = ToastInput & { id: number };
 
 const ToastContext = createContext<((toast: ToastInput) => void) | null>(null);
@@ -26,7 +33,7 @@ export function Toaster({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={show}>
       <ToastPrimitive.Provider swipeDirection="right" duration={5000}>
         {children}
-        {toasts.map(({ id, title, description, tone = "success" }) => {
+        {toasts.map(({ id, title, description, tone = "success", action }) => {
           const Icon = tone === "error" ? CircleAlert : CircleCheck;
           return (
             <ToastPrimitive.Root
@@ -47,6 +54,16 @@ export function Toaster({ children }: { children: React.ReactNode }) {
                   <ToastPrimitive.Description className="mt-0.5 text-muted-foreground">
                     {description}
                   </ToastPrimitive.Description>
+                ) : null}
+                {action ? (
+                  <ToastPrimitive.Action altText={action.label} asChild>
+                    <Link
+                      href={action.href}
+                      className="mt-1.5 inline-block rounded-sm text-[13px] font-medium text-brand underline-offset-4 hover:underline"
+                    >
+                      {action.label}
+                    </Link>
+                  </ToastPrimitive.Action>
                 ) : null}
               </div>
               <ToastPrimitive.Close
