@@ -43,8 +43,10 @@ PATCH body: `{ "note": string }`. The note is trimmed and capped at 500 characte
 ### `POST /api/transfers`
 Header: `Idempotency-Key: <UUID>` (required). Body: `{ fromAccountId, toAccountId, amount, description? }`, where `amount` is a decimal string such as `"1,000.00"`, parsed to cents without floating point, and `description` is at most 140 characters. The server validates against available balances, then writes both legs and the idempotency record in one `BEGIN IMMEDIATE` transaction. Returns 201 with `{ transferId, legs: [outflow, inflow], balances: { from, to } }`. The same key with the same body replays the original response (201, `Idempotent-Replayed: true`). Only successful transfers consume a key, so a rejected request can be retried with the same key.
 
+The Move money dialog validates with the same `transferBodySchema` before sending (`src/lib/transfer-form.ts`), plus the same account and available-funds checks. It creates one key per dialog open, reuses it on retry (so a request that timed out is never booked twice) and starts a new one after a success. Keys come from `crypto.getRandomValues`, because `crypto.randomUUID` is unavailable on plain-HTTP origins.
+
 ### `POST /api/demo/reset`
-Body: `{}`. Wipes and reseeds the caller's sandbox only. Returns `{ accounts, transactions }` counts.
+Body: `{}`. Wipes and reseeds the caller's sandbox only. Returns `{ accounts, transactions }` counts. Called from Settings → Reset demo data.
 
 ### `GET /api/health`
 No session needed. Runs `SELECT 1` and returns `{ "data": { "status": "ok" } }`. Used by the container healthcheck.

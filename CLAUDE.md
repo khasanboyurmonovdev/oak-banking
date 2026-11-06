@@ -75,6 +75,6 @@ Local network note: this machine's Avast web shield intercepts HTTPS, and the us
 - [ ] Phase 2B: Nginx + PM2 skeleton deploy to VPS (config prepared; not yet deployed)
 - [x] Phase 3: Overview
 - [x] Phase 4: Transactions
-- [ ] Phase 5: Transfers/payments, Cards, Accounts
+- [x] Phase 5: Move money dialog, Accounts, Settings (reset + disclosure), full nav (Cards page dropped)
 - [ ] Phase 6: Analytics
 - [ ] Phase 7: Polish, verification, README, final deploy, submission

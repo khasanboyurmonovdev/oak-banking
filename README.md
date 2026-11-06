@@ -1,14 +1,14 @@
 # Oak Banking
 
-Oak Banking is a business-banking dashboard for a fictional company, built as a technical case study. It covers an account overview, transaction search and filtering with a detail view, cash-flow analytics, and simulated transfers and payments, in a responsive, accessible interface with an original visual identity. The backend and API are in place; the dashboard pages are being built phase by phase (see `CLAUDE.md` → Status).
+Oak Banking is a business-banking dashboard for a fictional company, built as a technical case study. It covers an account overview with cash-flow and spending charts, transaction search and filtering with a detail view, per-account balances and activity, and simulated transfers between the company's own accounts, in a responsive, accessible interface with an original visual identity.
 
-Demo URL: http://31.97.188.5:8081 (skeleton deploy pending; see Deployment).
+Demo URL: http://31.97.188.5:8081
 
 ## Demo disclosure
 
 - **All banking is simulated.** There is no real money, no real bank or account data, and no integration with any banking or payment provider. Every balance, transaction and action is demo data.
 - **Per-visitor sandbox.** Your first visit sets a signed session cookie and seeds a private copy of the demo company's data. Other visitors can't see or change it.
-- **Data resets.** A sandbox is deleted after 72 hours without use (or earlier if many visitors arrive), and resetting the demo data (`POST /api/demo/reset`; a Settings button is planned) restores the seed at any time.
+- **Data resets.** A sandbox is deleted after 72 hours without use (or earlier if many visitors arrive), and Settings → Reset demo data restores the seed at any time.
 - **Plain HTTP.** The demo is served over HTTP on an IP address, without TLS. Don't enter anything you'd want to keep private.
 
 ## Stack
@@ -17,7 +17,7 @@ Demo URL: http://31.97.188.5:8081 (skeleton deploy pending; see Deployment).
 - Tailwind CSS with [shadcn/ui](https://ui.shadcn.com) (Radix primitives), Lucide icons, Geist Sans and Geist Mono
 - Route Handlers → services → repositories → SQLite (`node:sqlite`, built into Node 24, so no native module to compile)
 - Zod for input validation, Vitest for tests
-- Recharts for charts (analytics phase)
+- Recharts for charts
 
 Money is stored as integer cents; balances, totals and chart series are derived by pure selectors in `src/domain/`. The API is documented in [docs/api.md](docs/api.md).
 
@@ -91,3 +91,17 @@ The project is built with Claude Code as the implementing agent, working from wr
 - **Claude Code implements** each phase and reports what it changed, the decisions it made and the command output.
 - **I review** every change before committing it: reading the diff, checking it against the specs, and asking for fixes where it falls short.
 - **Verification is by real commands**, not claims: lint, typecheck, Vitest (domain selectors, services, and route handlers against in-memory SQLite) and a production build every phase, plus smoke checks against the running app.
+
+In practice:
+
+- **Claude Code** wrote the implementation: domain layer, backend and API, every page, tests and deployment config.
+- **I** reviewed and tested every phase before committing it, and sent fixes back where the result fell short of the spec.
+- **A Claude web Project** (holding the specs and docs) was used for planning: breaking the work into phases, writing the phase prompts, and reviewing Claude Code's reports before the next phase.
+
+## Known limitations
+
+- **Simulated data only.** One fictional company, three accounts, seeded history. No real banking, payments or account numbers, and transfers only move money between the company's own demo accounts.
+- **Not built:** no Cards page and no dedicated Analytics page (charts live on the Overview). There's no authentication; the "signed-in" user is fictional.
+- **HTTP only.** Served on an IP address without TLS, so there's no HSTS and the session cookie isn't `Secure`.
+- **In-memory rate limit.** The mutation rate limiter lives in process memory: it resets on restart and isn't shared between processes.
+- **Single instance.** One PM2 process with a local SQLite file; it isn't set up to scale horizontally.
